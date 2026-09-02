@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <title>Set up School Day Grid</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f5f7fb}
+    *{box-sizing:border-box}body{margin:0}.shell{max-width:920px;margin:auto;padding:32px 18px}.logo{width:200px;height:auto;display:block;margin:0 auto 18px}.card{background:#fff;border:1px solid #e4e8f0;border-radius:18px;padding:24px;box-shadow:0 10px 30px #17203310}.steps{display:flex;gap:8px;justify-content:center;margin:0 0 20px}.step{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#e8edf6;color:#64748b;font-weight:800}.step.active{background:#1675e5;color:#fff}.lead{color:#667085}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}input,textarea,select,button{width:100%;padding:11px;border:1px solid #d8dde7;border-radius:10px;background:#fff}button,.button{border:0;background:#1675e5;color:#fff;font-weight:750;cursor:pointer;text-decoration:none;display:inline-block;text-align:center;padding:11px 15px;border-radius:10px}.secondary{background:#fff;color:#172033;border:1px solid #d8dde7}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.actions>*{flex:1;min-width:160px}.message{background:#edf8f1;color:#19613a;border:1px solid #c9ead5;padding:12px;border-radius:10px;margin-bottom:15px}.candidate{display:flex;gap:10px;align-items:flex-start;padding:9px;border-radius:9px;background:#f8fafc;margin:6px 0}.candidate input{width:auto;margin-top:3px}.preview{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:7px;max-height:390px;overflow:auto}.day{padding:10px;border-radius:10px;background:#eef3fb}.day.no_school{background:#fff0f0}.day.weekend{opacity:.6}.warn{padding:8px;border-radius:8px;background:#fff4d8;margin:6px 0}.fine{font-size:12px;color:#667085}@media(max-width:650px){.grid{grid-template-columns:1fr}.shell{padding:18px 10px}}
+  </style>
+</head>
+<body><main class="shell">
+<img class="logo" src="/static/images/school-day-grid-logo.png" alt="School Day Grid">
+<div class="steps">{% for n in range(1,5) %}<div class="step {% if step == n %}active{% endif %}">{{ n }}</div>{% endfor %}</div>
+{% if message %}<div class="message">{{ message }}</div>{% endif %}
+<section class="card">
+{% if step == 1 %}
+  <h1>Welcome to School Day Grid</h1>
+  <p class="lead">Build a rotating school-day calendar that stays correct when holidays, snow days, and other closures interrupt the sequence. School Day Grid works by itself; Home Assistant and external calendars are optional.</p>
+  <ul><li>Your schedule lives locally in SQLite.</li><li>Rotations can be any length: A/B, 5-day, 6-day, or custom.</li><li>You can import and review “No School” dates from district ICS calendars.</li><li>You can subscribe to the finished calendar from other apps later.</li></ul>
+  <div class="actions"><a class="button" href="/onboarding?step=2">Get started</a><form method="post" action="/onboarding/demo"><button class="secondary">Try a sample school year</button></form></div>
+{% elif step == 2 %}
+  <h1>Create your school calendar</h1><p class="lead">Start with the school year and the repeating day sequence. One label per line; use any sequence length.</p>
+  <form method="post" action="/onboarding/profile">
+    <label>School or calendar name</label><input name="name" value="{{ profile.name }}" required>
+    <div class="grid"><div><label>School year start</label><input type="date" name="school_year_start" value="{{ profile.school_year_start }}" required></div><div><label>School year end</label><input type="date" name="school_year_end" value="{{ profile.school_year_end }}" required></div></div>
+    <div class="grid"><div><label>Timezone</label><input name="timezone" value="{{ profile.timezone or 'America/New_York' }}" required></div><div><label>US state</label><input name="us_state" value="{{ profile.us_state or 'NH' }}" maxlength="2" required></div></div>
+    <label>Day sequence labels</label><textarea name="cycle_labels" rows="7" required>{% for c in cycles %}{{ c.label }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+    <label>Which sequence day occurs on the first school day?</label><input type="number" name="starting_cycle_day" min="1" value="{{ profile.starting_cycle_day or 1 }}" required>
+    <div class="actions"><a class="button secondary" href="/onboarding?step=1">Back</a><button>Save & continue</button></div>
+  </form>
+{% elif step == 3 %}
+  <h1>Add known days off</h1><p class="lead">These are optional. You can change everything later.</p>
+  <div class="grid"><form method="post" action="/onboarding/holidays"><h3>State holidays</h3><p class="fine">Populate holidays for {{ profile.us_state }} that fall inside the school year.</p><button>Load state holidays</button></form><form method="post" enctype="multipart/form-data" action="/onboarding/ics-preview"><h3>District .ics calendar</h3><p class="fine">Upload a calendar and review only events whose title starts with “No School.”</p><input type="file" name="calendar_file" accept=".ics,text/calendar" required><button>Preview matches</button></form></div>
+  {% if ics_candidates %}<hr><h3>Review imported closure candidates</h3><form method="post" action="/onboarding/ics-import">{% for item in ics_candidates %}<label class="candidate"><input type="checkbox" name="selected_days" value="{{ item.day }}" checked><span><strong>{{ item.day }}</strong><br>{{ item.summary }}</span></label>{% endfor %}<button>Import selected dates</button></form>{% endif %}
+  <div class="actions"><a class="button secondary" href="/onboarding?step=2">Back</a><a class="button" href="/onboarding?step=4">Continue to preview</a></div>
+{% else %}
+  <h1>Review & finish</h1><p class="lead">This preview uses the same scheduling engine the app will use after setup.</p>
+  {% for warning in warnings %}<div class="warn">{{ warning.level|upper }} — {{ warning.message }}</div>{% endfor %}
+  <div class="preview">{% for row in preview_rows %}<div class="day {{ row.kind }}"><strong>{{ row.day }}</strong><br>{{ row.title }}{% if row.detail %}<br><span class="fine">{{ row.detail }}</span>{% endif %}</div>{% endfor %}</div>
+  {% if not has_users %}<hr><h3>Optional administrator account</h3><p class="fine">Recommended if this app will be reachable by anything other than your own trusted localhost/LAN. Passwords are never stored in plaintext; they are salted and hashed with PBKDF2-HMAC-SHA256.</p><form method="post" action="/onboarding/admin"><div class="grid"><input name="username" placeholder="Admin username" required><input type="password" name="password" minlength="10" placeholder="Password (10+ characters)" required></div><button>Create administrator</button></form>{% else %}<p class="fine">Administrator account already configured.</p>{% endif %}
+  <div class="actions"><a class="button secondary" href="/onboarding?step=3">Back</a><a class="button secondary" href="/backup/database">Download SQLite backup</a><form method="post" action="/onboarding/finish"><button>Finish setup</button></form></div>
+{% endif %}
+</section>
+</main><script>if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js')</script></body></html>
