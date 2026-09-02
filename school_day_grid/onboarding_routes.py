@@ -295,8 +295,8 @@ def build_onboarding_router(
                 "background_color": "#f6f7fb",
                 "theme_color": "#1675e5",
                 "icons": [
-                    {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
-                    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+                    {"src": "/static/icons/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml"},
+                    {"src": "/static/icons/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml"},
                 ],
             },
             media_type="application/manifest+json",
@@ -304,7 +304,7 @@ def build_onboarding_router(
 
     @router.get("/service-worker.js")
     async def service_worker():
-        script = """const CACHE='sdg-v2';const CORE=['/manifest.webmanifest','/static/images/school-day-grid-logo.png','/static/icons/icon-192.png','/static/icons/icon-512.png'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE))));self.addEventListener('fetch',e=>{if(e.request.method==='GET')e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request)))})"""
+        script = """const CACHE='sdg-v2';const CORE=['/manifest.webmanifest','/static/images/school-day-grid-logo.png','/static/icons/icon-192.svg','/static/icons/icon-512.svg'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE))));self.addEventListener('fetch',e=>{if(e.request.method==='GET')e.respondWith(fetch(e.request).then(r=>{const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));return r}).catch(()=>caches.match(e.request)))})"""
         return Response(script, media_type="application/javascript")
 
     return router
