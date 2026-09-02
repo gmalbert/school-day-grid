@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="static/images/school-day-grid-logo.png" alt="School Day Grid" width="200">
+</p>
+
 # School Day Grid
 
 School Day Grid is a standalone school-day sequence and calendar manager. It owns its schedule locally, supports arbitrary rotating-day patterns, closures and holidays, imports school/district ICS calendars, exposes calendar/API outputs, and can optionally integrate with Home Assistant, MQTT, Google Calendar, Microsoft Outlook, webhooks, and ntfy.
