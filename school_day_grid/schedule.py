@@ -2,7 +2,7 @@
 from __future__ import annotations
 from calendar import Calendar as MonthCalendar
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from icalendar import Calendar, Event
 from .database import Database
@@ -93,5 +93,5 @@ class ScheduleService:
         for r in self.rows(profile=profile):
             if r["kind"]=="weekend" and not include_weekends:continue
             if r["kind"]=="no_school" and not include_no_school:continue
-            e=Event(); d=date.fromisoformat(r["day"]); e.add("dtstart",d); e.add("dtend",d+timedelta(days=1)); e.add("summary",f"{r['title']} ({r['detail']})" if r["kind"]=="school" else r["title"]); e.add("description",r["detail"]); e.add("uid",f"sdg-{p['slug']}-{r['day']}@local"); e.add("dtstamp",datetime.utcnow()); cal.add_component(e)
+            e=Event(); d=date.fromisoformat(r["day"]); e.add("dtstart",d); e.add("dtend",d+timedelta(days=1)); e.add("summary",f"{r['title']} ({r['detail']})" if r["kind"]=="school" else r["title"]); e.add("description",r["detail"]); e.add("uid",f"sdg-{p['slug']}-{r['day']}@local"); e.add("dtstamp",datetime.now(UTC)); cal.add_component(e)
         return cal.to_ical()

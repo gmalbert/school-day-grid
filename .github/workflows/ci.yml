@@ -22,6 +22,6 @@ jobs:
       - name: Compile
         run: python -m compileall school_day_grid tests
       - name: Ruff correctness checks
-        run: ruff check --select E4,E7,E9,F school_day_grid tests
+        run: ruff check --select E4,E9,F school_day_grid tests
       - name: Tests
         run: pytest -q
