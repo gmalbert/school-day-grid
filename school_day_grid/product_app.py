@@ -51,20 +51,22 @@ PUBLIC_PREFIXES = (
     "/service-worker.js",
     "/static/",
 )
+PRE_SETUP_ONLY_PATHS = {"/backup/database"}
 
 
 @app.middleware("http")
 async def product_navigation_and_auth(request: Request, call_next):
     path = request.url.path
     setup_complete = onboarding_complete(database)
+    public_path = path.startswith(PUBLIC_PREFIXES)
 
-    if not setup_complete and not path.startswith(PUBLIC_PREFIXES):
+    if not setup_complete and not public_path and path not in PRE_SETUP_ONLY_PATHS:
         return RedirectResponse("/onboarding", 303)
 
     if (
         setup_complete
         and runtime.require_login
-        and not path.startswith(PUBLIC_PREFIXES)
+        and not public_path
         and not request.session.get("user_id")
     ):
         return RedirectResponse("/login", 303)
