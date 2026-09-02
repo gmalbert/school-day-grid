@@ -1,0 +1,25 @@
+services:
+  school-day-grid:
+    build: .
+    container_name: school-day-grid
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      SDG_DATABASE_PATH: /data/school_day_grid.sqlite3
+      SDG_REQUIRE_LOGIN: ${SDG_REQUIRE_LOGIN:-false}
+      SDG_SESSION_SECRET: ${SDG_SESSION_SECRET:-}
+      SDG_SOURCE_REFRESH_SECONDS: ${SDG_SOURCE_REFRESH_SECONDS:-21600}
+      # Optional direct Home Assistant adapter.
+      SDG_HA_URL: ${SDG_HA_URL:-}
+      SDG_HA_TOKEN: ${SDG_HA_TOKEN:-}
+      SDG_VERIFY_SSL: ${SDG_VERIFY_SSL:-true}
+      # Optional MQTT / Home Assistant Discovery adapter.
+      SDG_MQTT_HOST: ${SDG_MQTT_HOST:-}
+      SDG_MQTT_PORT: ${SDG_MQTT_PORT:-1883}
+      SDG_MQTT_USERNAME: ${SDG_MQTT_USERNAME:-}
+      SDG_MQTT_PASSWORD: ${SDG_MQTT_PASSWORD:-}
+      SDG_MQTT_DISCOVERY_PREFIX: ${SDG_MQTT_DISCOVERY_PREFIX:-homeassistant}
+      SDG_MQTT_BASE_TOPIC: ${SDG_MQTT_BASE_TOPIC:-school_day_grid}
+    volumes:
+      - ./data:/data
