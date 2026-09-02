@@ -2,8 +2,10 @@
 from __future__ import annotations
 import asyncio
 import secrets
+from pathlib import Path
 from fastapi import Request
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from .main import app, database, runtime, schedule, templates
 from .management_routes import build_management_router
@@ -15,10 +17,11 @@ from .security_routes import build_security_router
 
 app.title="School Day Grid"; app.version="0.4.0"
 app.add_middleware(SessionMiddleware,secret_key=runtime.session_secret or secrets.token_urlsafe(32),same_site="lax",https_only=False)
+app.mount("/static", StaticFiles(directory=Path(__file__).resolve().parent.parent / "static"), name="static")
 # Management is included first so enhanced routes such as profile Undo win over compatibility aliases.
 app.include_router(build_management_router(database,schedule)); app.include_router(build_product_router(database,schedule,templates)); app.include_router(build_review_router(database,schedule,templates)); app.include_router(build_publisher_router(database,schedule)); app.include_router(build_security_router(database))
 
-PUBLIC_PREFIXES=("/login","/setup-admin","/share/","/calendar/","/api/v1/health","/manifest.webmanifest","/service-worker.js")
+PUBLIC_PREFIXES=("/login","/setup-admin","/share/","/calendar/","/api/v1/health","/manifest.webmanifest","/service-worker.js","/static/")
 @app.middleware("http")
 async def optional_auth_guard(request:Request,call_next):
     if runtime.require_login and not request.url.path.startswith(PUBLIC_PREFIXES) and not request.session.get("user_id"):return RedirectResponse("/login",303)
