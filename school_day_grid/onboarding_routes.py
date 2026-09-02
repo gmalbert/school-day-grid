@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import secrets
 import sqlite3
 import tempfile
@@ -258,7 +259,7 @@ def build_onboarding_router(
     async def finish_onboarding():
         profile = _primary_profile(db)
         warnings = schedule.validate(profile["id"])
-        blocking = [warning for warning in warnings if warning.level.lower() == "error"]
+        blocking = [warning for warning in warnings if warning["level"].lower() == "error"]
         if blocking:
             raise HTTPException(400, "Resolve validation errors before finishing onboarding")
         db.update_settings({"onboarding_completed": True})
@@ -272,7 +273,8 @@ def build_onboarding_router(
 
     @router.get("/backup/database")
     async def backup_database():
-        _, name = tempfile.mkstemp(prefix="school-day-grid-", suffix=".sqlite3")
+        handle, name = tempfile.mkstemp(prefix="school-day-grid-", suffix=".sqlite3")
+        os.close(handle)
         Path(name).unlink(missing_ok=True)
         with sqlite3.connect(db.path) as source, sqlite3.connect(name) as target:
             source.backup(target)
