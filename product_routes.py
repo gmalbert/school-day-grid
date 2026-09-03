@@ -40,6 +40,7 @@ def schedule_calendar_weeks(rows: list[dict]) -> list[list[dict | None]]:
             week = [None] * 7
         cell = dict(row)
         cell["display_day"] = short_date(row["day"])
+        cell["is_today"] = day == date.today()
         week[weekday] = cell
         if weekday == 6:
             weeks.append(week)
@@ -75,6 +76,7 @@ def schedule_view_data(rows: list[dict], view: str, focus: str = "") -> dict:
             return None
         value = dict(row)
         value["display_day"] = short_date(row["day"])
+        value["is_today"] = day == date.today()
         return value
 
     if selected_view == "month":
