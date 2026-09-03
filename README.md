@@ -4,69 +4,54 @@
 
 # School Day Grid
 
-School Day Grid is a standalone school-day sequence and calendar manager. It owns its schedule locally, supports arbitrary rotating-day patterns, closures and holidays, imports school/district ICS calendars, exposes calendar/API outputs, and can optionally integrate with Home Assistant, MQTT, Google Calendar, Microsoft Outlook, webhooks, and ntfy.
+Keep an easy, reliable school-day calendar—even when holidays, snow days, and other closures interrupt the usual rotation.
 
-The local SQLite schedule is authoritative. External calendars and Home Assistant are optional inputs/outputs, not dependencies.
+School Day Grid is for schools and families that use rotating days such as A/B, 5-day, 6-day, or a cycle of their own. Set it up once, check today’s day at a glance, and share or subscribe to the finished calendar wherever it is useful.
 
-## First-run onboarding
+## What it helps with
 
-A new installation opens a guided setup wizard instead of the legacy five-day configuration screen:
+- Keep rotating days in the right order when school is closed.
+- Add recurring specials such as Art, Music, Library, or anything else.
+- Bring in known days off from a district calendar when you have one.
+- Share a finished calendar or subscribe to it from another calendar app.
+- Keep everything local by default. Home Assistant and other connections are optional.
 
-1. Welcome / optional sample calendar.
-2. School name, school-year dates, timezone, state, arbitrary-length day sequence, and starting sequence day.
-3. Optional state holidays and reviewed district `.ics` import.
-4. Schedule preview, validation, optional administrator creation, backup, and finish.
+## Start here
 
-After onboarding, `/` redirects to the profile-based calendar UI. The older root dashboard remains only as a migration compatibility layer.
+When you open School Day Grid for the first time, it guides you through four short steps:
 
-## Password security
+1. Choose **Try a sample school year** to explore safely, or select **Get started** for your own calendar.
+2. Name the calendar, choose the school-year dates, and enter the activities for each rotating day.
+3. Optionally add known days off from your state or district calendar.
+4. Review the result and finish. You can return to setup later to make changes.
 
-When an administrator account is created, School Day Grid **does not store the password in plaintext**. Passwords are stored as salted `PBKDF2-HMAC-SHA256` hashes using a random salt and 240,000 iterations. Authentication is optional unless `SDG_REQUIRE_LOGIN=true` is configured.
+### See the sample calendar in action
 
-For a public Internet deployment, HTTPS, a persistent `SDG_SESSION_SECRET`, CSRF hardening, and a production authentication review are still required before calling the application production-ready.
+The sample has a five-day rotation with Art, Music, Phys Ed, Technology, and Library. It is a useful way to see how activities and dates fit together before entering real information.
 
-## Run locally
+![Sample calendar details](docs/images/onboarding-calendar-details.png)
 
-```bash
-python -m venv .venv
-source .venv/Scripts/activate   # Windows Git Bash
-pip install -e '.[dev]'
-cp .env.example .env
-uvicorn school_day_grid.product_app:app --reload --host 0.0.0.0 --port 8088
-```
+After choosing the sample, the review screen shows the actual sequence, weekends, and a sample no-school day before anything is finalized.
 
-Then open `http://localhost:8088`.
+![Sample calendar preview](docs/images/onboarding-sample-preview.png)
 
-## Docker
+## A few helpful notes
 
-```bash
-docker compose up -d --build
-```
+- You do not need to connect Home Assistant, MQTT, Google Calendar, Outlook, or any other service to use the app.
+- Adding a district calendar is optional. You can skip it and add closures later.
+- An administrator account is optional during setup.
+- Back up the full calendar or export one calendar from the app whenever you want.
 
-The default installation requires no Home Assistant or MQTT configuration.
+## Need to install or run it?
 
-## Backup
+Follow the plain-language [installation and first-run guide](docs/GETTING_STARTED.md). It covers running School Day Grid on Windows, macOS, Linux, or Docker.
 
-The profile UI includes two backup/export options:
+## More help
 
-- **Full SQLite backup** — consistent SQLite backup of all profiles, settings, history, sources, and users.
-- **Profile JSON export** — portable export of one calendar profile and its schedule data.
+- [Import a district calendar](docs/ICS_IMPORT_GUIDE.md)
+- [Optional Home Assistant integration](docs/HOME_ASSISTANT_OPTIONAL_INTEGRATION.md)
+- [Technical reference for developers and self-hosters](docs/TECHNICAL_REFERENCE.md)
 
-## Product documentation
+## Contributing and testing
 
-- `FEATURE_IMPLEMENTATION_MATRIX.md` — implemented feature map.
-- `ICS_IMPORT_GUIDE.md` — uploaded and subscribed ICS behavior.
-- `HOME_ASSISTANT_OPTIONAL_INTEGRATION.md` — optional HA/MQTT integration.
-- `PRODUCT_ARCHITECTURE_AND_DISTRIBUTION.md` — architecture and public-release direction.
-- `docs/MIGRATION_FROM_SCHOOLCYCLEDAYS.md` — history and compatibility boundary.
-- `docs/TESTING_GUIDE.md` — standalone-first acceptance and integration testing.
-
-## Identity
-
-```text
-Product:      School Day Grid
-Domain:       schooldaygrid.com
-Python dist:  school-day-grid
-Python pkg:   school_day_grid
-Env prefix:   SDG_
-```
+If you are working on the application itself, see the [testing guide](docs/TESTING_GUIDE.md) and [technical reference](docs/TECHNICAL_REFERENCE.md).

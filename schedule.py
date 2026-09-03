@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from icalendar import Calendar, Event
-from .database import Database
+from database import Database
 
 @dataclass(slots=True)
 class ScheduleSummary:

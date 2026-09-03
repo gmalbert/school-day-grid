@@ -10,14 +10,14 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from .main import app, database, runtime, schedule, templates
-from .management_routes import build_management_router
-from .notifications import notification_loop
-from .onboarding_routes import build_onboarding_router, onboarding_complete
-from .product_routes import build_product_router, subscription_refresh_loop
-from .publisher_routes import build_publisher_router
-from .review_routes import build_review_router
-from .security_routes import build_security_router
+from main import app, database, runtime, schedule, templates
+from management_routes import build_management_router
+from notifications import notification_loop
+from onboarding_routes import build_onboarding_router, onboarding_complete
+from product_routes import build_product_router, subscription_refresh_loop
+from publisher_routes import build_publisher_router
+from review_routes import build_review_router
+from security_routes import build_security_router
 
 app.title = "School Day Grid"
 app.version = "0.5.0"
@@ -29,7 +29,7 @@ app.add_middleware(
 )
 app.mount(
     "/static",
-    StaticFiles(directory=Path(__file__).resolve().parent.parent / "static"),
+    StaticFiles(directory=Path(__file__).resolve().parent / "static"),
     name="static",
 )
 
@@ -41,6 +41,7 @@ app.include_router(build_publisher_router(database, schedule))
 app.include_router(build_security_router(database))
 
 PUBLIC_PREFIXES = (
+    "/favicon.ico",
     "/login",
     "/setup-admin",
     "/onboarding",
@@ -52,6 +53,12 @@ PUBLIC_PREFIXES = (
     "/static/",
 )
 PRE_SETUP_ONLY_PATHS = {"/backup/database"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> RedirectResponse:
+    """Offer a conventional favicon URL alongside the scalable SVG icon."""
+    return RedirectResponse("/static/icons/icon-192.svg", status_code=307)
 
 
 @app.middleware("http")

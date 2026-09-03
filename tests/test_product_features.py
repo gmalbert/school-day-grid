@@ -1,9 +1,9 @@
 from __future__ import annotations
 from datetime import date
-from school_day_grid.database import Database
-from school_day_grid.product_routes import password_hash, verify_password
-from school_day_grid.schedule import ScheduleService
-from school_day_grid.sync_engine import PublicationSyncPlanner
+from database import Database
+from product_routes import password_hash, verify_password
+from schedule import ScheduleService
+from sync_engine import PublicationSyncPlanner
 
 
 def make_profile(tmp_path,labels=None):

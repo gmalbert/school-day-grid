@@ -1,7 +1,7 @@
 from datetime import date
 
-from school_day_grid.database import Database
-from school_day_grid.schedule import ScheduleService
+from database import Database
+from schedule import ScheduleService
 
 
 def configured_schedule(tmp_path):

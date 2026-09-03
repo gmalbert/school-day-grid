@@ -20,8 +20,8 @@ jobs:
       - name: Install
         run: python -m pip install -e '.[dev]'
       - name: Compile
-        run: python -m compileall school_day_grid tests
+        run: python -m compileall *.py tests
       - name: Ruff correctness checks
-        run: ruff check --select E4,E9,F school_day_grid tests
+        run: ruff check --select E4,E9,F *.py tests
       - name: Tests
         run: pytest -q

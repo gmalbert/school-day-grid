@@ -35,7 +35,7 @@ Some identifiers still contain the historical `school_cycle_days` name. These ar
 - selected internal database field/table names such as `cycle_day` and `cycle_definitions`;
 - Google private metadata used to recognize already-published legacy events.
 
-Changing those during the initial repo split could break migration or orphan events. New public naming, package paths, environment variables, Docker naming, MQTT entity identity, PWA metadata, and ICS identifiers use School Day Grid.
+Changing those during the initial repo split could break migration or orphan events. New public naming, module entry points, environment variables, Docker naming, MQTT entity identity, PWA metadata, and ICS identifiers use School Day Grid.
 
 ## New repository identity
 
@@ -44,7 +44,7 @@ GitHub:       gmalbert/school-day-grid
 Product:      School Day Grid
 Domain:       schooldaygrid.com
 Python dist:  school-day-grid
-Python pkg:   school_day_grid
+Python code:  repository root
 Env prefix:   SDG_
 Database:     school_day_grid.sqlite3
 ```
@@ -57,11 +57,15 @@ A fresh checkout should be preferred rather than trying to repoint the old worki
 git clone https://github.com/gmalbert/school-day-grid.git
 cd school-day-grid
 python -m venv .venv
-source .venv/Scripts/activate
-pip install -e '.[dev]'
+source .venv/bin/activate       # macOS/Linux
+# source .venv/Scripts/activate # Windows Git Bash
+python -m pip install -e '.[dev]'
 cp .env.example .env
-uvicorn school_day_grid.product_app:app --reload --host 0.0.0.0 --port 8088
+python -m uvicorn product_app:app --reload --host 0.0.0.0 --port 8088
 ```
+
+On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1` and copy the environment
+file with `Copy-Item .env.example .env`.
 
 ## Migrating data
 

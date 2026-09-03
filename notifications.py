@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 from datetime import date, datetime, timezone
-from .adapters import NtfyPublisher, WebhookNotificationPublisher
-from .database import Database
-from .schedule import ScheduleService
+from adapters import NtfyPublisher, WebhookNotificationPublisher
+from database import Database
+from schedule import ScheduleService
 
 async def deliver_daily_notifications(db:Database,schedule:ScheduleService)->int:
     sent=0

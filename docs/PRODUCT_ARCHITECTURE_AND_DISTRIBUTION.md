@@ -104,6 +104,11 @@ Provider sync uses a content-hash planner and stored provider event IDs to class
 
 ## Deployment
 
+The application uses a flat Python module layout: its `.py` modules live in the repository
+root. `product_app.py` is the full application entry point. `templates/`, `static/`, `tests/`,
+and `docs/` remain separate because they contain UI assets, tests, and documentation rather
+than importable application modules.
+
 ### Python
 
 ```bash
@@ -111,7 +116,7 @@ python -m venv .venv
 source .venv/Scripts/activate
 pip install -e '.[dev]'
 cp .env.example .env
-uvicorn school_day_grid.product_app:app --host 0.0.0.0 --port 8088
+python -m uvicorn product_app:app --host 0.0.0.0 --port 8088
 ```
 
 ### Docker

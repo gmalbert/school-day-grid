@@ -7,16 +7,116 @@ import hmac
 import json
 import re
 import secrets
-from datetime import date, datetime, timezone
+from calendar import Calendar
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from starlette.templating import Jinja2Templates
 
-from .adapters import ICSUrlSource, NtfyPublisher, WebhookNotificationPublisher
-from .database import Database
-from .schedule import ScheduleService
+from adapters import ICSUrlSource, NtfyPublisher, WebhookNotificationPublisher
+from database import Database
+from schedule import ScheduleService
+
+
+WEEKDAY_NAMES = ("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+
+
+def short_date(value: str) -> str:
+    day = date.fromisoformat(value)
+    return f"{day.month}/{day.day}"
+
+
+def schedule_calendar_weeks(rows: list[dict]) -> list[list[dict | None]]:
+    """Place chronological schedule rows into Sunday-first calendar weeks."""
+    weeks: list[list[dict | None]] = []
+    week: list[dict | None] = [None] * 7
+    for row in rows:
+        day = date.fromisoformat(row["day"])
+        weekday = (day.weekday() + 1) % 7  # Python starts weeks on Monday.
+        if weekday == 0 and any(week):
+            weeks.append(week)
+            week = [None] * 7
+        cell = dict(row)
+        cell["display_day"] = short_date(row["day"])
+        cell["is_today"] = day == date.today()
+        week[weekday] = cell
+        if weekday == 6:
+            weeks.append(week)
+            week = [None] * 7
+    if any(week):
+        weeks.append(week)
+    return weeks
+
+
+def schedule_view_data(rows: list[dict], view: str, focus: str = "") -> dict:
+    """Build the all-weeks, month, week, and work-week calendar presentations."""
+    selected_view = view if view in {"all", "month", "week", "weekdays"} else "all"
+    try:
+        focused_day = date.fromisoformat(focus) if focus else date.today()
+    except ValueError:
+        focused_day = date.today()
+    if selected_view == "all":
+        return {
+            "selected_view": selected_view,
+            "title": "",
+            "weeks": schedule_calendar_weeks(rows),
+            "headers": WEEKDAY_NAMES,
+            "columns": 7,
+            "previous_focus": "",
+            "next_focus": "",
+        }
+
+    by_day = {row["day"]: row for row in rows}
+
+    def cell(day: date) -> dict | None:
+        row = by_day.get(day.isoformat())
+        if not row:
+            return None
+        value = dict(row)
+        value["display_day"] = short_date(row["day"])
+        value["is_today"] = day == date.today()
+        return value
+
+    if selected_view == "month":
+        month_start = focused_day.replace(day=1)
+        weeks = [[cell(day) for day in week] for week in Calendar(firstweekday=6).monthdatescalendar(month_start.year, month_start.month)]
+        previous_focus = (month_start - timedelta(days=1)).replace(day=1)
+        next_focus = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        return {
+            "selected_view": selected_view,
+            "title": month_start.strftime("%B %Y"),
+            "weeks": weeks,
+            "headers": WEEKDAY_NAMES,
+            "columns": 7,
+            "previous_focus": previous_focus.isoformat(),
+            "next_focus": next_focus.isoformat(),
+        }
+
+    week_start = focused_day - timedelta(days=(focused_day.weekday() + 1) % 7)
+    if selected_view == "weekdays":
+        days = [week_start + timedelta(days=offset) for offset in range(1, 6)]
+        return {
+            "selected_view": selected_view,
+            "title": f"Week of {short_date(week_start.isoformat())}",
+            "weeks": [[cell(day) for day in days]],
+            "headers": WEEKDAY_NAMES[1:6],
+            "columns": 5,
+            "previous_focus": (week_start - timedelta(days=7)).isoformat(),
+            "next_focus": (week_start + timedelta(days=7)).isoformat(),
+        }
+
+    days = [week_start + timedelta(days=offset) for offset in range(7)]
+    return {
+        "selected_view": selected_view,
+        "title": f"Week of {short_date(week_start.isoformat())}",
+        "weeks": [[cell(day) for day in days]],
+        "headers": WEEKDAY_NAMES,
+        "columns": 7,
+        "previous_focus": (week_start - timedelta(days=7)).isoformat(),
+        "next_focus": (week_start + timedelta(days=7)).isoformat(),
+    }
 
 
 def slugify(value:str)->str:
@@ -70,15 +170,22 @@ def build_product_router(db:Database,schedule:ScheduleService,templates:Jinja2Te
         return go(f"/profile/{pid}","Profile created.")
 
     @router.get("/profile/{profile}",response_class=HTMLResponse)
-    async def profile_view(request:Request,profile:str,message:str=""):
+    async def profile_view(request:Request,profile:str,message:str="",view:str="all",focus:str=""):
         p=db.profile(profile)
         if not p: raise HTTPException(404,"Profile not found")
-        today=schedule.today(profile=p["id"]); nxt=schedule.next_school_day(profile=p["id"]); rows=schedule.rows(profile=p["id"]); warnings=schedule.validate(p["id"])
-        return templates.TemplateResponse(request,"profile.html",{"profile":p,"cycles":db.cycles(p["id"]),"today_row":today,"next_school":nxt,"rows":rows,"warnings":warnings,"audit":db.audit_rows(p["id"],20),"sources":extra.sources(p["id"]),"message":message})
+        today=schedule.today(profile=p["id"]); today_row=dict(today); today_row["display_day"]=short_date(today_row["day"])
+        nxt=schedule.next_school_day(profile=p["id"]); next_school=dict(nxt) if nxt else None
+        if next_school: next_school["display_day"]=short_date(next_school["day"])
+        rows=schedule.rows(profile=p["id"]); calendar_view=schedule_view_data(rows,view,focus); warnings=schedule.validate(p["id"])
+        return templates.TemplateResponse(request,"profile.html",{"profile":p,"cycles":db.cycles(p["id"]),"today_row":today_row,"next_school":next_school,"rows":rows,"calendar_weeks":calendar_view["weeks"],"weekday_names":calendar_view["headers"],"calendar_view":calendar_view,"warnings":warnings,"audit":db.audit_rows(p["id"],20),"sources":extra.sources(p["id"]),"message":message})
+
+    @router.get("/help", response_class=HTMLResponse)
+    async def help_page(request: Request):
+        return templates.TemplateResponse(request, "help.html", {})
 
     @router.post("/profile/{profile}/cycles")
-    async def cycles(profile:str,labels:str=Form(...)):
-        p=db.profile(profile); db.set_cycles(p["id"],[x.strip() for x in labels.splitlines() if x.strip()]); schedule.rebuild_profile(p["id"]); return go(f"/profile/{p['id']}","Cycle updated.")
+    async def cycles(profile:str,labels:list[str]=Form(...)):
+        p=db.profile(profile); db.set_cycles(p["id"],[x.strip() for x in labels if x.strip()]); schedule.rebuild_profile(p["id"]); return go(f"/profile/{p['id']}","Cycle-day activities updated.")
     @router.post("/profile/{profile}/snow-day")
     async def snow_day(profile:str,day:str=Form(...),title:str=Form("Snow Day")):
         p=db.profile(profile); schedule.add_snow_day_and_shift(p["id"],date.fromisoformat(day),title); return go(f"/profile/{p['id']}",f"{day} added; remaining cycle shifted automatically.")
@@ -109,7 +216,8 @@ def build_product_router(db:Database,schedule:ScheduleService,templates:Jinja2Te
     async def shared(request:Request,token:str):
         p=db.token_profile(token)
         if not p: raise HTTPException(404,"Share link not found")
-        return templates.TemplateResponse(request,"shared.html",{"profile":p,"today":schedule.today(profile=p["id"]),"next":schedule.next_school_day(profile=p["id"]),"rows":schedule.rows(profile=p["id"])})
+        rows=schedule.rows(profile=p["id"])
+        return templates.TemplateResponse(request,"shared.html",{"profile":p,"today":schedule.today(profile=p["id"]),"next":schedule.next_school_day(profile=p["id"]),"rows":rows,"calendar_weeks":schedule_calendar_weeks(rows),"weekday_names":WEEKDAY_NAMES})
     @router.get("/calendar/{slug}.ics")
     async def private_ics(slug:str,token:str=""):
         p=db.profile(slug)
@@ -155,7 +263,7 @@ def build_product_router(db:Database,schedule:ScheduleService,templates:Jinja2Te
     async def logout(request:Request):request.session.clear();return go("/login","Signed out.")
 
     @router.get("/manifest.webmanifest")
-    async def manifest():return JSONResponse({"name":"School Day Grid","short_name":"Day Grid","start_url":"/","display":"standalone","background_color":"#f6f7fb","theme_color":"#263a63","icons":[]},media_type="application/manifest+json")
+    async def manifest():return JSONResponse({"name":"School Day Grid","short_name":"Day Grid","start_url":"/","display":"standalone","background_color":"#f6f7fb","theme_color":"#263a63","icons":[{"src":"/static/icons/icon-192.svg","sizes":"192x192","type":"image/svg+xml","purpose":"any maskable"},{"src":"/static/icons/icon-512.svg","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]},media_type="application/manifest+json")
     @router.get("/service-worker.js")
     async def service_worker():
         js="""const CACHE='sdg-v1'; self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['/','/manifest.webmanifest'])))); self.addEventListener('fetch',e=>{if(e.request.method==='GET')e.respondWith(fetch(e.request).then(r=>{let x=r.clone();caches.open(CACHE).then(c=>c.put(e.request,x));return r}).catch(()=>caches.match(e.request)))})"""; return Response(js,media_type="application/javascript")

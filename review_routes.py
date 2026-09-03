@@ -1,12 +1,13 @@
 """Two-step ICS import review workflow."""
 from __future__ import annotations
+from datetime import date
 from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from starlette.templating import Jinja2Templates
-from .database import Database
-from .ics_import import clean_no_school_calendar
-from .schedule import ScheduleService
+from database import Database
+from ics_import import candidates_within_school_year, clean_no_school_calendar
+from schedule import ScheduleService
 
 MAX_BYTES=5*1024*1024
 
@@ -19,12 +20,10 @@ def build_review_router(db:Database,schedule:ScheduleService,templates:Jinja2Tem
         filename=Path(calendar_file.filename or "calendar.ics").name; raw=await calendar_file.read(MAX_BYTES+1)
         if len(raw)>MAX_BYTES:raise HTTPException(413,"ICS file exceeds 5 MB")
         result=clean_no_school_calendar(raw)
-        candidates=[]
-        for event in result.events:
-            for day in event.dates:candidates.append({"day":day.isoformat(),"summary":event.summary})
-        unique={x["day"]:x for x in candidates}; candidates=[unique[k] for k in sorted(unique)]
+        start=date.fromisoformat(p["school_year_start"]); end=date.fromisoformat(p["school_year_end"])
+        candidates=candidates_within_school_year(result,start,end)
         request.session["ics_review"]={"profile_id":p["id"],"filename":filename,"candidates":candidates}
-        return templates.TemplateResponse(request,"ics_review.html",{"profile":p,"filename":filename,"candidates":candidates,"repaired":result.repaired_final_event})
+        return templates.TemplateResponse(request,"ics_review.html",{"profile":p,"filename":filename,"candidates":candidates,"school_year":f"{start.year}–{end.year}","repaired":result.repaired_final_event})
     @router.post("/profile/{profile}/ics/confirm")
     async def confirm(request:Request,profile:str,selected:list[str]=Form(default=[])):
         p=db.profile(profile); pending=request.session.get("ics_review")

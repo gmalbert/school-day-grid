@@ -6,7 +6,7 @@ import hmac
 import pytest
 from fastapi import HTTPException
 
-from school_day_grid.onboarding_routes import _password_hash, _validate_profile
+from onboarding_routes import _password_hash, _validate_profile
 
 
 def test_passwords_are_salted_pbkdf2_hashes():

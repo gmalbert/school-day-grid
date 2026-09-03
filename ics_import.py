@@ -45,8 +45,23 @@ class NoSchoolImportResult:
         return sorted({day for event in self.events for day in event.dates})
 
 
+def candidates_within_school_year(
+    result: NoSchoolImportResult, school_year_start: date, school_year_end: date
+) -> list[dict[str, str]]:
+    """Return unique review candidates that fall within the configured school year."""
+    candidates: dict[str, dict[str, str]] = {}
+    for event in result.events:
+        for event_date in event.dates:
+            if school_year_start <= event_date <= school_year_end:
+                candidates[event_date.isoformat()] = {
+                    "day": event_date.isoformat(),
+                    "summary": event.summary,
+                }
+    return [candidates[day] for day in sorted(candidates)]
+
+
 def clean_no_school_calendar(raw: bytes) -> NoSchoolImportResult:
-    """Keep only VEVENTs whose SUMMARY begins with ``No School``.
+    """Keep only VEVENTs whose SUMMARY contains ``No School``.
 
     This intentionally preserves the original helper script's matching rule,
     while accepting case differences and malformed files whose final VEVENT is
@@ -75,7 +90,7 @@ def clean_no_school_calendar(raw: bytes) -> NoSchoolImportResult:
             continue
         for component in parsed.walk("VEVENT"):
             summary = str(component.get("summary", "")).strip()
-            if not summary.lower().startswith("no school"):
+            if "no school" not in summary.lower():
                 continue
             try:
                 start, end = _event_dates(component)

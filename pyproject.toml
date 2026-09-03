@@ -28,9 +28,27 @@ dev = [
   "ruff>=0.12,<1.0",
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["school_day_grid*"]
+[tool.setuptools]
+py-modules = [
+  "adapters",
+  "config",
+  "database",
+  "ha_client",
+  "ics_import",
+  "main",
+  "management_routes",
+  "mqtt_adapter",
+  "notifications",
+  "onboarding_routes",
+  "product_app",
+  "product_routes",
+  "publisher_routes",
+  "review_routes",
+  "schedule",
+  "security_routes",
+  "service",
+  "sync_engine",
+]
 
 [tool.ruff]
 line-length = 100

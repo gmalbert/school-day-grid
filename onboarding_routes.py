@@ -16,9 +16,9 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 from starlette.background import BackgroundTask
 from starlette.templating import Jinja2Templates
 
-from .database import Database
-from .ics_import import clean_no_school_calendar
-from .schedule import ScheduleService
+from database import Database
+from ics_import import candidates_within_school_year, clean_no_school_calendar
+from schedule import ScheduleService
 
 MAX_ICS_BYTES = 5 * 1024 * 1024
 
@@ -123,9 +123,9 @@ def build_onboarding_router(
         timezone: str = Form("America/New_York"),
         us_state: str = Form("NH"),
         starting_cycle_day: int = Form(1),
-        cycle_labels: str = Form(...),
+        cycle_labels: list[str] = Form(...),
     ):
-        labels = [line.strip() for line in cycle_labels.splitlines() if line.strip()]
+        labels = [label.strip() for label in cycle_labels if label.strip()]
         _validate_profile(
             school_year_start,
             school_year_end,
@@ -186,14 +186,12 @@ def build_onboarding_router(
         if len(raw) > MAX_ICS_BYTES:
             raise HTTPException(413, "ICS file is larger than 5 MB")
         result = clean_no_school_calendar(raw)
-        candidates = []
-        seen: set[str] = set()
-        for event in result.events:
-            for event_date in event.dates:
-                value = event_date.isoformat()
-                if value not in seen:
-                    candidates.append({"day": value, "summary": event.summary})
-                    seen.add(value)
+        profile = _primary_profile(db)
+        candidates = candidates_within_school_year(
+            result,
+            date.fromisoformat(profile["school_year_start"]),
+            date.fromisoformat(profile["school_year_end"]),
+        )
         request.session["onboarding_ics_candidates"] = candidates
         return redirect(3, f"Found {len(candidates)} candidate no-school dates. Review them below.")
 

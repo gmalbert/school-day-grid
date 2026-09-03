@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" href="/static/icons/icon-192.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
   <link rel="manifest" href="/manifest.webmanifest">
   <title>Set up School Day Grid</title>
   <style>
@@ -18,30 +20,29 @@
 {% if step == 1 %}
   <h1>Welcome to School Day Grid</h1>
   <p class="lead">Build a rotating school-day calendar that stays correct when holidays, snow days, and other closures interrupt the sequence. School Day Grid works by itself; Home Assistant and external calendars are optional.</p>
-  <ul><li>Your schedule lives locally in SQLite.</li><li>Rotations can be any length: A/B, 5-day, 6-day, or custom.</li><li>You can import and review “No School” dates from district ICS calendars.</li><li>You can subscribe to the finished calendar from other apps later.</li></ul>
+  <ul><li>Rotations can be any length: A/B, 5-day, 6-day, or custom.</li><li>You can import and review “No School” dates from district calendars.</li><li>You can subscribe to the finished calendar from other apps later.</li></ul>
   <div class="actions"><a class="button" href="/onboarding?step=2">Get started</a><form method="post" action="/onboarding/demo"><button class="secondary">Try a sample school year</button></form></div>
 {% elif step == 2 %}
-  <h1>Create your school calendar</h1><p class="lead">Start with the school year and the repeating day sequence. One label per line; use any sequence length.</p>
+  <h1>Create your school calendar</h1><p class="lead">Start with the school year, then define the recurring activity or special for each cycle day.</p>
   <form method="post" action="/onboarding/profile">
-    <label>School or calendar name</label><input name="name" value="{{ profile.name }}" required>
+    <label>Calendar name</label><input name="name" value="{{ profile.name }}" required>
     <div class="grid"><div><label>School year start</label><input type="date" name="school_year_start" value="{{ profile.school_year_start }}" required></div><div><label>School year end</label><input type="date" name="school_year_end" value="{{ profile.school_year_end }}" required></div></div>
-    <div class="grid"><div><label>Timezone</label><input name="timezone" value="{{ profile.timezone or 'America/New_York' }}" required></div><div><label>US state</label><input name="us_state" value="{{ profile.us_state or 'NH' }}" maxlength="2" required></div></div>
-    <label>Day sequence labels</label><textarea name="cycle_labels" rows="7" required>{% for c in cycles %}{{ c.label }}{% if not loop.last %}
-{% endif %}{% endfor %}</textarea>
+    <div class="grid"><div><label>Timezone</label><select name="timezone" required><option value="America/New_York" {% if (profile.timezone or 'America/New_York') == 'America/New_York' %}selected{% endif %}>Eastern (New York)</option><option value="America/Chicago" {% if profile.timezone == 'America/Chicago' %}selected{% endif %}>Central (Chicago)</option><option value="America/Denver" {% if profile.timezone == 'America/Denver' %}selected{% endif %}>Mountain (Denver)</option><option value="America/Los_Angeles" {% if profile.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific (Los Angeles)</option><option value="America/Anchorage" {% if profile.timezone == 'America/Anchorage' %}selected{% endif %}>Alaska (Anchorage)</option><option value="Pacific/Honolulu" {% if profile.timezone == 'Pacific/Honolulu' %}selected{% endif %}>Hawaii (Honolulu)</option><option value="UTC" {% if profile.timezone == 'UTC' %}selected{% endif %}>UTC</option></select></div><div><label>US state</label><input name="us_state" value="{{ profile.us_state or 'NH' }}" maxlength="2" required></div></div>
+    <label>Cycle-day activities</label><p class="fine">These appear beneath the day number on the calendar. For example, enter “Library” for Day 1.</p><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;padding:6px">Cycle day</th><th style="text-align:left;padding:6px">Recurring activity / special</th></tr></thead><tbody id="cycleActivityRows">{% for c in cycles %}<tr><td style="padding:6px">Day {{ c.sequence_number }}</td><td style="padding:6px"><input name="cycle_labels" value="{{ c.label }}" aria-label="Activity for Day {{ c.sequence_number }}" required></td></tr>{% endfor %}</tbody></table><button class="secondary" type="button" onclick="addCycleActivity()">Add another cycle day</button>
     <label>Which sequence day occurs on the first school day?</label><input type="number" name="starting_cycle_day" min="1" value="{{ profile.starting_cycle_day or 1 }}" required>
     <div class="actions"><a class="button secondary" href="/onboarding?step=1">Back</a><button>Save & continue</button></div>
   </form>
 {% elif step == 3 %}
   <h1>Add known days off</h1><p class="lead">These are optional. You can change everything later.</p>
-  <div class="grid"><form method="post" action="/onboarding/holidays"><h3>State holidays</h3><p class="fine">Populate holidays for {{ profile.us_state }} that fall inside the school year.</p><button>Load state holidays</button></form><form method="post" enctype="multipart/form-data" action="/onboarding/ics-preview"><h3>District .ics calendar</h3><p class="fine">Upload a calendar and review only events whose title starts with “No School.”</p><input type="file" name="calendar_file" accept=".ics,text/calendar" required><button>Preview matches</button></form></div>
+  <div class="grid"><form method="post" action="/onboarding/holidays"><h3>State holidays</h3><p class="fine">Populate holidays for {{ profile.us_state }} that fall inside the school year.</p><button>Load state holidays</button></form><form method="post" enctype="multipart/form-data" action="/onboarding/ics-preview"><h3>District calendar</h3><p class="fine">Upload a calendar and review events with “No School” in the title that fall inside this school year.</p><input type="file" name="calendar_file" accept=".ics,text/calendar" required><button>Preview matches</button></form></div>
   {% if ics_candidates %}<hr><h3>Review imported closure candidates</h3><form method="post" action="/onboarding/ics-import">{% for item in ics_candidates %}<label class="candidate"><input type="checkbox" name="selected_days" value="{{ item.day }}" checked><span><strong>{{ item.day }}</strong><br>{{ item.summary }}</span></label>{% endfor %}<button>Import selected dates</button></form>{% endif %}
   <div class="actions"><a class="button secondary" href="/onboarding?step=2">Back</a><a class="button" href="/onboarding?step=4">Continue to preview</a></div>
 {% else %}
   <h1>Review & finish</h1><p class="lead">This preview uses the same scheduling engine the app will use after setup.</p>
   {% for warning in warnings %}<div class="warn">{{ warning.level|upper }} — {{ warning.message }}</div>{% endfor %}
   <div class="preview">{% for row in preview_rows %}<div class="day {{ row.kind }}"><strong>{{ row.day }}</strong><br>{{ row.title }}{% if row.detail %}<br><span class="fine">{{ row.detail }}</span>{% endif %}</div>{% endfor %}</div>
-  {% if not has_users %}<hr><h3>Optional administrator account</h3><p class="fine">Recommended if this app will be reachable by anything other than your own trusted localhost/LAN. Passwords are never stored in plaintext; they are salted and hashed with PBKDF2-HMAC-SHA256.</p><form method="post" action="/onboarding/admin"><div class="grid"><input name="username" placeholder="Admin username" required><input type="password" name="password" minlength="10" placeholder="Password (10+ characters)" required></div><button>Create administrator</button></form>{% else %}<p class="fine">Administrator account already configured.</p>{% endif %}
-  <div class="actions"><a class="button secondary" href="/onboarding?step=3">Back</a><a class="button secondary" href="/backup/database">Download SQLite backup</a><form method="post" action="/onboarding/finish"><button>Finish setup</button></form></div>
+  {% if not has_users %}<hr><h3>Optional administrator account</h3><form method="post" action="/onboarding/admin"><div class="grid"><input name="username" placeholder="Admin username" required><input type="password" name="password" minlength="10" placeholder="Password (10+ characters)" required></div><button>Create administrator</button></form>{% else %}<p class="fine">Administrator account already configured.</p>{% endif %}
+  <div class="actions"><a class="button secondary" href="/onboarding?step=3">Back</a><form method="post" action="/onboarding/finish"><button>Finish setup</button></form></div>
 {% endif %}
 </section>
-</main><script>if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js')</script></body></html>
+</main><script>function addCycleActivity(){const rows=document.getElementById('cycleActivityRows'),day=rows.rows.length+1,row=rows.insertRow();row.innerHTML='<td style="padding:6px">Day '+day+'</td><td style="padding:6px"><input name="cycle_labels" aria-label="Activity for Day '+day+'" required></td>'}if('serviceWorker'in navigator)navigator.serviceWorker.register('/service-worker.js')</script></body></html>

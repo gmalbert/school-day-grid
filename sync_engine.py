@@ -4,7 +4,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from typing import Any
-from .database import Database
+from database import Database
 
 @dataclass(slots=True)
 class SyncPlan:
