@@ -53,7 +53,7 @@
   <section class="hero-grid">
     <div class="hero-card"><div class="eyebrow">Today</div><div class="hero-value">{{ today_row.title }}</div><div class="hero-detail">{% if today_row.detail %}{{ today_row.detail }} · {% endif %}{{ today_row.day }}</div></div>
     <div class="hero-card"><div class="eyebrow">Next school day</div><div class="hero-value">{% if next_school %}{{ next_school.title }}{% else %}Not scheduled{% endif %}</div><div class="hero-detail">{% if next_school %}{{ next_school.detail }} · {{ next_school.day }}{% else %}No future school day is currently configured.{% endif %}</div></div>
-    <div class="hero-card"><div class="eyebrow">Calendar feed</div><div class="hero-value">Always available</div><div class="hero-detail">Use <span class="code-link">/calendar.ics</span> in any compatible calendar app.</div></div>
+    <div class="hero-card"><div class="eyebrow">Local first</div><div class="hero-value">Your calendar stays authoritative</div><div class="hero-detail">Your schedule remains on your device, ready to share with any compatible calendar app.</div></div>
   </section>
 
   <section class="calendar-card">
