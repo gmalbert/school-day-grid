@@ -4,8 +4,8 @@ from datetime import date
 
 import pytest
 
-from school_day_grid.database import Database
-from school_day_grid.service import GENERATED_MARKER, SchoolCycleDaysService
+from database import Database
+from service import GENERATED_MARKER, SchoolCycleDaysService
 
 
 class FakeHA:

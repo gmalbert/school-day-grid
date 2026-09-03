@@ -8,8 +8,8 @@ from zoneinfo import ZoneInfo
 
 import holidays
 
-from .database import Database
-from .ha_client import HomeAssistantClient
+from database import Database
+from ha_client import HomeAssistantClient
 
 GENERATED_MARKER = "[school_cycle_days]"
 

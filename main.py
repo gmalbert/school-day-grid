@@ -15,13 +15,13 @@ from fastapi import FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from .config import get_settings
-from .database import Database
-from .ha_client import HomeAssistantClient
-from .ics_import import clean_no_school_calendar
-from .mqtt_adapter import publish_discovery_and_state
-from .schedule import ScheduleService, ScheduleSummary
-from .service import SchoolCycleDaysService
+from config import get_settings
+from database import Database
+from ha_client import HomeAssistantClient
+from ics_import import clean_no_school_calendar
+from mqtt_adapter import publish_discovery_and_state
+from schedule import ScheduleService, ScheduleSummary
+from service import SchoolCycleDaysService
 
 runtime = get_settings()
 database = Database(runtime.database_path)
@@ -30,7 +30,7 @@ ha = HomeAssistantClient(runtime.ha_base_url, runtime.ha_token, verify_ssl=runti
 ha_service = SchoolCycleDaysService(database, ha)
 
 app = FastAPI(title="School Day Grid", version="0.4.0")
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
+templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 MAX_ICS_BYTES = 5 * 1024 * 1024
 
 

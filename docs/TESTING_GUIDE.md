@@ -7,11 +7,14 @@ School Day Grid should be validated first as a completely standalone application
 From the repository root:
 
 ```bash
-python -m compileall school_day_grid tests
-pytest -q
+python -m compileall *.py tests
+python -m pytest -q
+python -m ruff check --select E4,E9,F *.py tests
 ```
 
-CI also runs the suite on supported Python versions.
+These commands reflect the flat module layout: application modules are root-level `*.py`
+files, not files in a `school_day_grid/` package. CI also runs the suite on supported Python
+versions.
 
 ## Core manual acceptance test
 
@@ -19,7 +22,7 @@ CI also runs the suite on supported Python versions.
 2. Run the full product app:
 
 ```bash
-uvicorn school_day_grid.product_app:app --reload --host 0.0.0.0 --port 8088
+python -m uvicorn product_app:app --reload --host 0.0.0.0 --port 8088
 ```
 
 3. Open `http://localhost:8088`.

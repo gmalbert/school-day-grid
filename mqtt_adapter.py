@@ -7,8 +7,8 @@ from datetime import date, timedelta
 
 import paho.mqtt.client as mqtt
 
-from .config import Settings
-from .schedule import ScheduleService
+from config import Settings
+from schedule import ScheduleService
 
 
 def publish_discovery_and_state(settings: Settings, schedule: ScheduleService) -> None:

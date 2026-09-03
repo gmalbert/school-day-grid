@@ -5,8 +5,8 @@ from datetime import date
 import holidays
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
-from .database import Database
-from .schedule import ScheduleService
+from database import Database
+from schedule import ScheduleService
 
 def build_management_router(db:Database,schedule:ScheduleService)->APIRouter:
     router=APIRouter()

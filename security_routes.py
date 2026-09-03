@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
-from .database import Database
+from database import Database
 
 def build_security_router(db:Database)->APIRouter:
     router=APIRouter()

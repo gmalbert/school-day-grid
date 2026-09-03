@@ -5,9 +5,9 @@ from urllib.parse import quote
 import httpx
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import RedirectResponse
-from .database import Database
-from .schedule import ScheduleService
-from .sync_engine import PublicationSyncPlanner
+from database import Database
+from schedule import ScheduleService
+from sync_engine import PublicationSyncPlanner
 
 
 def event_payload(row):
