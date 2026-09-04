@@ -44,11 +44,12 @@ After choosing the sample, the review screen shows the actual sequence, weekends
 
 ## Need to install or run it?
 
-Follow the plain-language [installation and first-run guide](docs/GETTING_STARTED.md). It covers running School Day Grid on Windows, macOS, Linux, or Docker.
+Follow the plain-language [installation and first-run guide](docs/GETTING_STARTED.md). For most Windows users, Docker Desktop is the recommended local installation; it does not require working in WSL. The guide also covers Python-based setup on Windows, macOS, and Linux.
 
 ## More help
 
 - [Import a district calendar](docs/ICS_IMPORT_GUIDE.md)
+- [Keep it running locally with Home Assistant](docs/LOCAL_HOME_ASSISTANT.md)
 - [Optional Home Assistant integration](docs/HOME_ASSISTANT_OPTIONAL_INTEGRATION.md)
 - [Technical reference for developers and self-hosters](docs/TECHNICAL_REFERENCE.md)
 
