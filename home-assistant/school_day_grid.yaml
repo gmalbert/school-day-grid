@@ -1,0 +1,65 @@
+# School Day Grid REST helper package for Home Assistant.
+#
+# Replace 192.168.1.42 with the fixed LAN IP address (or local DNS name) of
+# the computer that runs School Day Grid. Keep this file together as a Home
+# Assistant package; see docs/LOCAL_HOME_ASSISTANT.md for installation steps.
+
+rest:
+  - resource: "http://192.168.1.42:8088/api/v1/today"
+    scan_interval: 300
+    timeout: 10
+    sensor:
+      - name: School Day Grid Today
+        unique_id: school_day_grid_today
+        icon: mdi:calendar-school
+        value_template: "{{ value_json.title }}"
+        json_attributes:
+          - day
+          - kind
+          - cycle_day
+          - detail
+          - source
+
+  - resource: "http://192.168.1.42:8088/api/v1/tomorrow"
+    scan_interval: 300
+    timeout: 10
+    sensor:
+      - name: School Day Grid Tomorrow
+        unique_id: school_day_grid_tomorrow
+        icon: mdi:calendar-arrow-right
+        value_template: "{{ value_json.title }}"
+        json_attributes:
+          - day
+          - kind
+          - cycle_day
+          - detail
+          - source
+
+  - resource: "http://192.168.1.42:8088/api/v1/next-school-day"
+    scan_interval: 300
+    timeout: 10
+    sensor:
+      - name: School Day Grid Next School Day
+        unique_id: school_day_grid_next_school_day
+        icon: mdi:calendar-clock
+        value_template: "{{ value_json.title }}"
+        json_attributes:
+          - day
+          - kind
+          - cycle_day
+          - detail
+          - source
+
+automation:
+  - alias: Refresh School Day Grid at midnight
+    id: refresh_school_day_grid_at_midnight
+    triggers:
+      - trigger: time
+        at: "00:00:05"
+    actions:
+      - action: homeassistant.update_entity
+        target:
+          entity_id:
+            - sensor.school_day_grid_today
+            - sensor.school_day_grid_tomorrow
+            - sensor.school_day_grid_next_school_day

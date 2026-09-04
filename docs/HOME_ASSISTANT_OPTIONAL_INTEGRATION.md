@@ -2,6 +2,9 @@
 
 School Day Grid is a standalone application. Home Assistant is an optional consumer/integration target, not the application runtime or source of truth.
 
+For the recommended always-on local setup, including a copy-ready Home Assistant
+REST sensor package, see [Keep School Day Grid running locally with Home Assistant](LOCAL_HOME_ASSISTANT.md).
+
 ## Preferred integration: MQTT Discovery
 
 Configure a broker with:
