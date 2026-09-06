@@ -40,7 +40,7 @@ class Database:
               created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS cycle_definitions (
-              profile_id INTEGER NOT NULL, sequence_number INTEGER NOT NULL, label TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
+              profile_id INTEGER NOT NULL, sequence_number INTEGER NOT NULL, label TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', icon_path TEXT,
               PRIMARY KEY(profile_id, sequence_number), FOREIGN KEY(profile_id) REFERENCES calendar_profiles(id) ON DELETE CASCADE
             );
             CREATE TABLE IF NOT EXISTS profile_non_school_days (
@@ -62,7 +62,7 @@ class Database:
             );
             CREATE TABLE IF NOT EXISTS profile_schedule (
               profile_id INTEGER NOT NULL, day TEXT NOT NULL, kind TEXT NOT NULL, cycle_day INTEGER, title TEXT NOT NULL,
-              detail TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'generated', overridden INTEGER NOT NULL DEFAULT 0,
+              detail TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'generated', overridden INTEGER NOT NULL DEFAULT 0, icon_path TEXT,
               PRIMARY KEY(profile_id, day), FOREIGN KEY(profile_id) REFERENCES calendar_profiles(id) ON DELETE CASCADE
             );
             CREATE TABLE IF NOT EXISTS external_sources (
@@ -88,6 +88,12 @@ class Database:
               id INTEGER PRIMARY KEY AUTOINCREMENT, profile_id INTEGER NOT NULL, kind TEXT NOT NULL, name TEXT NOT NULL, config TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1
             );
             """)
+            cycle_columns = {row[1] for row in c.execute("PRAGMA table_info(cycle_definitions)")}
+            if "icon_path" not in cycle_columns:
+                c.execute("ALTER TABLE cycle_definitions ADD COLUMN icon_path TEXT")
+            schedule_columns = {row[1] for row in c.execute("PRAGMA table_info(profile_schedule)")}
+            if "icon_path" not in schedule_columns:
+                c.execute("ALTER TABLE profile_schedule ADD COLUMN icon_path TEXT")
             if not c.execute("SELECT 1 FROM calendar_profiles LIMIT 1").fetchone():
                 legacy = self.get_settings()
                 c.execute("INSERT INTO calendar_profiles(name,slug,school_year_start,school_year_end,starting_cycle_day,us_state,public_share_token,ics_token) VALUES(?,?,?,?,?,?,?,?)",
@@ -148,11 +154,13 @@ class Database:
             for i,label in enumerate(cycle_labels or [f"Day {i}" for i in range(1,6)],1):c.execute("INSERT INTO cycle_definitions(profile_id,sequence_number,label) VALUES(?,?,?)",(pid,i,label))
         self.audit(pid,"profile_created",{"name":name,"slug":slug}); return pid
     def cycles(self,pid):
-        with self._connect() as c:return [dict(r) for r in c.execute("SELECT sequence_number,label,description FROM cycle_definitions WHERE profile_id=? ORDER BY sequence_number",(pid,))]
-    def set_cycles(self,pid,labels):
+        with self._connect() as c:return [dict(r) for r in c.execute("SELECT sequence_number,label,description,icon_path FROM cycle_definitions WHERE profile_id=? ORDER BY sequence_number",(pid,))]
+    def set_cycles(self,pid,labels,icons=None):
+        if icons is None:
+            icons = [cycle["icon_path"] for cycle in self.cycles(pid)]
         with self._connect() as c:
-            c.execute("DELETE FROM cycle_definitions WHERE profile_id=?",(pid,)); c.executemany("INSERT INTO cycle_definitions(profile_id,sequence_number,label) VALUES(?,?,?)",[(pid,i,x) for i,x in enumerate(labels,1)])
-        self.audit(pid,"cycles_updated",{"labels":labels})
+            c.execute("DELETE FROM cycle_definitions WHERE profile_id=?",(pid,)); c.executemany("INSERT INTO cycle_definitions(profile_id,sequence_number,label,icon_path) VALUES(?,?,?,?)",[(pid,i,x,icons[i-1] if i <= len(icons) else None) for i,x in enumerate(labels,1)])
+        self.audit(pid,"cycles_updated",{"labels":labels,"icons":icons})
     def profile_blocked(self,pid):
         with self._connect() as c:
             ns={r[0] for r in c.execute("SELECT day FROM profile_non_school_days WHERE profile_id=?",(pid,))}; hs={r[0] for r in c.execute("SELECT day FROM profile_holidays WHERE profile_id=?",(pid,))}
@@ -176,10 +184,11 @@ class Database:
     def closure_rules(self,pid):
         with self._connect() as c:return [dict(r) for r in c.execute("SELECT * FROM closure_rules WHERE profile_id=? AND enabled=1",(pid,))]
     def replace_profile_schedule(self,pid,rows):
+        rows = [{**row, "icon_path": row.get("icon_path")} for row in rows]
         with self._connect() as c:
-            c.execute("DELETE FROM profile_schedule WHERE profile_id=?",(pid,)); c.executemany("INSERT INTO profile_schedule(profile_id,day,kind,cycle_day,title,detail,source,overridden) VALUES(:profile_id,:day,:kind,:cycle_day,:title,:detail,:source,:overridden)",rows)
+            c.execute("DELETE FROM profile_schedule WHERE profile_id=?",(pid,)); c.executemany("INSERT INTO profile_schedule(profile_id,day,kind,cycle_day,title,detail,source,overridden,icon_path) VALUES(:profile_id,:day,:kind,:cycle_day,:title,:detail,:source,:overridden,:icon_path)",rows)
     def profile_schedule(self,pid,start=None,end=None):
-        q="SELECT day,kind,cycle_day,title,detail,source,overridden FROM profile_schedule WHERE profile_id=?"; vals=[pid]
+        q="SELECT day,kind,cycle_day,title,detail,source,overridden,icon_path FROM profile_schedule WHERE profile_id=?"; vals=[pid]
         if start:q+=" AND day>=?"; vals.append(start)
         if end:q+=" AND day<=?"; vals.append(end)
         with self._connect() as c:return [dict(r) for r in c.execute(q+" ORDER BY day",vals)]
@@ -197,7 +206,7 @@ class Database:
         with self._connect() as c:
             r=c.execute("SELECT * FROM snapshots WHERE profile_id=? ORDER BY id DESC LIMIT 1",(pid,)).fetchone()
             if not r:return False
-            p=json.loads(r["payload"]); c.execute("DELETE FROM cycle_definitions WHERE profile_id=?",(pid,)); c.executemany("INSERT INTO cycle_definitions(profile_id,sequence_number,label,description) VALUES(?,?,?,?)",[(pid,x["sequence_number"],x["label"],x.get("description","")) for x in p["cycles"]]); c.execute("DELETE FROM profile_non_school_days WHERE profile_id=?",(pid,));
+            p=json.loads(r["payload"]); c.execute("DELETE FROM cycle_definitions WHERE profile_id=?",(pid,)); c.executemany("INSERT INTO cycle_definitions(profile_id,sequence_number,label,description,icon_path) VALUES(?,?,?,?,?)",[(pid,x["sequence_number"],x["label"],x.get("description",""),x.get("icon_path")) for x in p["cycles"]]); c.execute("DELETE FROM profile_non_school_days WHERE profile_id=?",(pid,));
             for x in p["non_school"]: c.execute("INSERT INTO profile_non_school_days(profile_id,day,source,title,imported_from) VALUES(?,?,?,?,?)",(pid,x["day"],x["source"],x.get("title","No School"),x.get("imported_from")))
             c.execute("DELETE FROM schedule_overrides WHERE profile_id=?",(pid,));
             for x in p["overrides"].values(): c.execute("INSERT INTO schedule_overrides(profile_id,day,override_type,cycle_day,title,note) VALUES(?,?,?,?,?,?)",(pid,x["day"],x["override_type"],x.get("cycle_day"),x.get("title",""),x.get("note","")))

@@ -36,18 +36,19 @@ class ScheduleService:
         if end<start: raise ValueError("School year end must not be before school year start")
         cycles=self.database.cycles(pid)
         if not cycles: raise ValueError("At least one cycle definition is required")
-        labels=[x["label"] for x in cycles]; cycle=((int(p.get("starting_cycle_day") or 1)-1)%len(labels))+1
+        labels=[x["label"] for x in cycles]; icons=[x.get("icon_path") for x in cycles]; cycle=((int(p.get("starting_cycle_day") or 1)-1)%len(labels))+1
         blocked=self.database.profile_blocked(pid)|self._rule_dates(pid,start,end)|(extra_blocked or set()); holidays=self.database.profile_holiday_map(pid); overrides=self.database.overrides(pid)
         rows=[]; counts={"school":0,"non_school":0,"weekend":0}; current=start
         while current<=end:
             iso=current.isoformat(); override=overrides.get(iso); overridden=0
+            icon_path=None
             if override and override["override_type"]=="no_school": kind="no_school"; cday=None; title=override.get("title") or "No School"; detail=override.get("note") or "Override"; source="override"; overridden=1
-            elif override and override["override_type"]=="school": cday=int(override.get("cycle_day") or cycle); cday=((cday-1)%len(labels))+1; kind="school"; title=override.get("title") or f"Day {cday}"; detail=override.get("note") or labels[cday-1]; source="override"; overridden=1; cycle=(cday%len(labels))+1
+            elif override and override["override_type"]=="school": cday=int(override.get("cycle_day") or cycle); cday=((cday-1)%len(labels))+1; kind="school"; title=override.get("title") or f"Day {cday}"; detail=override.get("note") or labels[cday-1]; icon_path=icons[cday-1]; source="override"; overridden=1; cycle=(cday%len(labels))+1
             elif current.weekday()>=5: kind="weekend"; cday=None; title="Weekend"; detail=""; source="generated"
             elif iso in blocked: kind="no_school"; cday=None; title="No School"; detail=holidays.get(iso,"No School"); source="holiday" if iso in holidays else "non_school_day"
-            else: kind="school"; cday=cycle; title=f"Day {cycle}"; detail=labels[cycle-1]; source="generated"; cycle=(cycle%len(labels))+1
+            else: kind="school"; cday=cycle; title=f"Day {cycle}"; detail=labels[cycle-1]; icon_path=icons[cycle-1]; source="generated"; cycle=(cycle%len(labels))+1
             counts["school" if kind=="school" else "weekend" if kind=="weekend" else "non_school"]+=1
-            rows.append({"profile_id":pid,"day":iso,"kind":kind,"cycle_day":cday,"title":title,"detail":detail,"source":source,"overridden":overridden}); current+=timedelta(days=1)
+            rows.append({"profile_id":pid,"day":iso,"kind":kind,"cycle_day":cday,"title":title,"detail":detail,"source":source,"overridden":overridden,"icon_path":icon_path}); current+=timedelta(days=1)
         return rows,ScheduleSummary(counts["school"],counts["non_school"],counts["weekend"],start,end)
     def rebuild_profile(self,profile="school")->ScheduleSummary:
         p=self._profile(profile); rows,summary=self.preview(profile); self.database.replace_profile_schedule(p["id"],rows); payload=asdict(summary); payload["start"]=summary.start.isoformat(); payload["end"]=summary.end.isoformat(); self.database.audit(p["id"],"schedule_rebuilt",payload); return summary
