@@ -37,6 +37,7 @@ class Database:
               timezone TEXT NOT NULL DEFAULT 'America/New_York', school_year_start TEXT NOT NULL DEFAULT '',
               school_year_end TEXT NOT NULL DEFAULT '', starting_cycle_day INTEGER NOT NULL DEFAULT 1,
               us_state TEXT NOT NULL DEFAULT 'NH', public_share_token TEXT UNIQUE, ics_token TEXT UNIQUE,
+              weekend_icon_path TEXT, holiday_icon_path TEXT, no_school_icon_path TEXT,
               created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS cycle_definitions (
@@ -94,6 +95,10 @@ class Database:
             schedule_columns = {row[1] for row in c.execute("PRAGMA table_info(profile_schedule)")}
             if "icon_path" not in schedule_columns:
                 c.execute("ALTER TABLE profile_schedule ADD COLUMN icon_path TEXT")
+            profile_columns = {row[1] for row in c.execute("PRAGMA table_info(calendar_profiles)")}
+            for column in ("weekend_icon_path", "holiday_icon_path", "no_school_icon_path"):
+                if column not in profile_columns:
+                    c.execute(f"ALTER TABLE calendar_profiles ADD COLUMN {column} TEXT")
             if not c.execute("SELECT 1 FROM calendar_profiles LIMIT 1").fetchone():
                 legacy = self.get_settings()
                 c.execute("INSERT INTO calendar_profiles(name,slug,school_year_start,school_year_end,starting_cycle_day,us_state,public_share_token,ics_token) VALUES(?,?,?,?,?,?,?,?)",

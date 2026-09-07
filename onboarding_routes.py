@@ -36,9 +36,9 @@ def _icon_options(label: str = "") -> list[dict[str, str]]:
     }
     categories = {aliases.get(word, word) for word in label_words}
     matches = [file for file in files if any(file.name.lower().startswith(f"{category}_") for category in categories)]
-    if not matches:
-        matches = [file for file in files if file.name.startswith(("art_", "culinary_", "drama_", "foreign_language_", "geography_", "library_", "math_", "music_", "phys_ed_", "science_", "technology_"))]
-    return [{"path": f"/static/images/{file.name}", "name": file.stem.replace("_", " ").title()} for file in matches]
+    subject_files = [file for file in files if file.name.startswith(("art_", "culinary_", "drama_", "foreign_language_", "geography_", "library_", "math_", "music_", "phys_ed_", "science_", "technology_", "holiday_", "no_school_", "weekend_"))]
+    ordered = matches + [file for file in subject_files if file not in matches]
+    return [{"path": f"/static/images/{file.name}", "name": file.stem.replace("_", " ").title(), "likely": file in matches} for file in ordered]
 
 
 def _allowed_icon_paths() -> set[str]:
@@ -122,13 +122,14 @@ def build_onboarding_router(
                 warnings = schedule.validate(profile["id"])
             except ValueError:
                 preview_rows = []
+        cycles = [{**cycle, "icon_options": _icon_options(cycle["label"])} for cycle in db.cycles(profile["id"])]
         return templates.TemplateResponse(
             request,
             "onboarding.html",
             {
                 "step": max(1, min(step, 4)),
                 "profile": profile,
-                "cycles": db.cycles(profile["id"]),
+                "cycles": cycles,
                 "icon_options": _icon_options(),
                 "preview_rows": preview_rows,
                 "warnings": warnings,
@@ -148,6 +149,9 @@ def build_onboarding_router(
         starting_cycle_day: int = Form(1),
         cycle_labels: list[str] = Form(...),
         cycle_icons: list[str] = Form(default=[]),
+        weekend_icon: str = Form(""),
+        holiday_icon: str = Form(""),
+        no_school_icon: str = Form(""),
     ):
         labels = [label.strip() for label in cycle_labels if label.strip()]
         _validate_profile(
@@ -162,13 +166,14 @@ def build_onboarding_router(
         if len(cycle_icons) != len(labels):
             cycle_icons = (cycle_icons + [""] * len(labels))[:len(labels)]
         allowed_icons = _allowed_icon_paths()
-        if any(icon and icon not in allowed_icons for icon in cycle_icons):
+        special_icons = [weekend_icon, holiday_icon, no_school_icon]
+        if any(icon and icon not in allowed_icons for icon in cycle_icons + special_icons):
             raise HTTPException(400, "Choose an icon from the available special icons")
         profile = _primary_profile(db)
         with db._connect() as connection:
             connection.execute(
                 "UPDATE calendar_profiles SET name=?,school_year_start=?,school_year_end=?,"
-                "timezone=?,us_state=?,starting_cycle_day=? WHERE id=?",
+                "timezone=?,us_state=?,starting_cycle_day=?,weekend_icon_path=?,holiday_icon_path=?,no_school_icon_path=? WHERE id=?",
                 (
                     name.strip(),
                     school_year_start,
@@ -176,6 +181,9 @@ def build_onboarding_router(
                     timezone.strip(),
                     us_state.strip().upper(),
                     starting_cycle_day,
+                    weekend_icon or None,
+                    holiday_icon or None,
+                    no_school_icon or None,
                     profile["id"],
                 ),
             )

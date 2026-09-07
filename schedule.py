@@ -42,10 +42,10 @@ class ScheduleService:
         while current<=end:
             iso=current.isoformat(); override=overrides.get(iso); overridden=0
             icon_path=None
-            if override and override["override_type"]=="no_school": kind="no_school"; cday=None; title=override.get("title") or "No School"; detail=override.get("note") or "Override"; source="override"; overridden=1
+            if override and override["override_type"]=="no_school": kind="no_school"; cday=None; title=override.get("title") or "No School"; detail=override.get("note") or "Override"; icon_path=p.get("no_school_icon_path"); source="override"; overridden=1
             elif override and override["override_type"]=="school": cday=int(override.get("cycle_day") or cycle); cday=((cday-1)%len(labels))+1; kind="school"; title=override.get("title") or f"Day {cday}"; detail=override.get("note") or labels[cday-1]; icon_path=icons[cday-1]; source="override"; overridden=1; cycle=(cday%len(labels))+1
-            elif current.weekday()>=5: kind="weekend"; cday=None; title="Weekend"; detail=""; source="generated"
-            elif iso in blocked: kind="no_school"; cday=None; title="No School"; detail=holidays.get(iso,"No School"); source="holiday" if iso in holidays else "non_school_day"
+            elif current.weekday()>=5: kind="weekend"; cday=None; title="Weekend"; detail=""; icon_path=p.get("weekend_icon_path"); source="generated"
+            elif iso in blocked: kind="no_school"; cday=None; title="No School"; detail=holidays.get(iso,"No School"); icon_path=p.get("holiday_icon_path") if iso in holidays else p.get("no_school_icon_path"); source="holiday" if iso in holidays else "non_school_day"
             else: kind="school"; cday=cycle; title=f"Day {cycle}"; detail=labels[cycle-1]; icon_path=icons[cycle-1]; source="generated"; cycle=(cycle%len(labels))+1
             counts["school" if kind=="school" else "weekend" if kind=="weekend" else "non_school"]+=1
             rows.append({"profile_id":pid,"day":iso,"kind":kind,"cycle_day":cday,"title":title,"detail":detail,"source":source,"overridden":overridden,"icon_path":icon_path}); current+=timedelta(days=1)

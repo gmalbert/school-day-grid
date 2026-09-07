@@ -49,6 +49,17 @@ Home Assistant or any external calendar client may consume the built-in ICS outp
 
 Rotate a profile's ICS token from its management page if a subscription URL is exposed.
 
+Use the feed URL as a remote calendar subscription rather than downloading the
+`.ics` file and importing it once. A downloaded/imported file is only a
+snapshot: later changes in School Day Grid will not be copied into Home
+Assistant automatically. A remote subscription lets Home Assistant refresh
+the calendar from the URL. In Home Assistant, use the **Remote Calendar**
+integration and provide the `https://...ics` URL (or a `webcal://...` URL when
+the calendar client supports it). Remote Calendar refreshes at startup and,
+by default, every 24 hours; configure a custom polling automation if changes
+need to be picked up more frequently. No manual push is required for the
+subscription URL.
+
 ## Direct Home Assistant adapter
 
 The direct HA adapter is retained for migration and optional compatibility. Configure:

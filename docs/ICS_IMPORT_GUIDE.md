@@ -86,6 +86,16 @@ The URL-source defaults can be edited when adding the source. Background refresh
 
 URL refreshes record a content hash and audit events. If source content changes, matching dates are incorporated and the local schedule is rebuilt.
 
+### Home Assistant and imported files
+
+If you download the cleaned `.ics` file and import it into Home Assistant,
+that import is a snapshot. Later changes to the source calendar will not be
+reflected automatically; you would need to import an updated file. For a live
+connection, give Home Assistant the School Day Grid ICS URL and configure its
+**Remote Calendar** integration. Home Assistant polls the URL (every 24 hours
+by default), so no manual push is required. A custom polling automation can
+be used when a shorter refresh interval is needed.
+
 ## Limits
 
 Browser uploads are currently capped at 5 MB.
