@@ -21,6 +21,28 @@ from ics_import import candidates_within_school_year, clean_no_school_calendar
 from schedule import ScheduleService
 
 MAX_ICS_BYTES = 5 * 1024 * 1024
+ICON_DIR = Path(__file__).parent / "static" / "images"
+
+
+def _icon_options(label: str = "") -> list[dict[str, str]]:
+    """Return artwork matching a special, with a safe fallback for custom labels."""
+    files = sorted(ICON_DIR.glob("*.png"))
+    label_words = set(label.lower().replace("-", " ").split())
+    aliases = {
+        "phys": "phys_ed", "pe": "phys_ed", "p.e.": "phys_ed",
+        "physical": "phys_ed", "education": "phys_ed", "gym": "phys_ed",
+        "language": "foreign_language", "languages": "foreign_language",
+        "tech": "technology",
+    }
+    categories = {aliases.get(word, word) for word in label_words}
+    matches = [file for file in files if any(file.name.lower().startswith(f"{category}_") for category in categories)]
+    subject_files = [file for file in files if file.name.startswith(("art_", "culinary_", "drama_", "foreign_language_", "geography_", "library_", "math_", "music_", "phys_ed_", "science_", "technology_", "holiday_", "no_school_", "weekend_"))]
+    ordered = matches + [file for file in subject_files if file not in matches]
+    return [{"path": f"/static/images/{file.name}", "name": file.stem.replace("_", " ").title(), "likely": file in matches} for file in ordered]
+
+
+def _allowed_icon_paths() -> set[str]:
+    return {option["path"] for option in _icon_options()}
 
 
 def _password_hash(password: str, salt: str | None = None) -> str:
@@ -100,13 +122,15 @@ def build_onboarding_router(
                 warnings = schedule.validate(profile["id"])
             except ValueError:
                 preview_rows = []
+        cycles = [{**cycle, "icon_options": _icon_options(cycle["label"])} for cycle in db.cycles(profile["id"])]
         return templates.TemplateResponse(
             request,
             "onboarding.html",
             {
                 "step": max(1, min(step, 4)),
                 "profile": profile,
-                "cycles": db.cycles(profile["id"]),
+                "cycles": cycles,
+                "icon_options": _icon_options(),
                 "preview_rows": preview_rows,
                 "warnings": warnings,
                 "ics_candidates": request.session.get("onboarding_ics_candidates", []),
@@ -124,6 +148,10 @@ def build_onboarding_router(
         us_state: str = Form("NH"),
         starting_cycle_day: int = Form(1),
         cycle_labels: list[str] = Form(...),
+        cycle_icons: list[str] = Form(default=[]),
+        weekend_icon: str = Form(""),
+        holiday_icon: str = Form(""),
+        no_school_icon: str = Form(""),
     ):
         labels = [label.strip() for label in cycle_labels if label.strip()]
         _validate_profile(
@@ -135,11 +163,17 @@ def build_onboarding_router(
         )
         if len(us_state.strip()) != 2:
             raise HTTPException(400, "US state must be a two-letter code")
+        if len(cycle_icons) != len(labels):
+            cycle_icons = (cycle_icons + [""] * len(labels))[:len(labels)]
+        allowed_icons = _allowed_icon_paths()
+        special_icons = [weekend_icon, holiday_icon, no_school_icon]
+        if any(icon and icon not in allowed_icons for icon in cycle_icons + special_icons):
+            raise HTTPException(400, "Choose an icon from the available special icons")
         profile = _primary_profile(db)
         with db._connect() as connection:
             connection.execute(
                 "UPDATE calendar_profiles SET name=?,school_year_start=?,school_year_end=?,"
-                "timezone=?,us_state=?,starting_cycle_day=? WHERE id=?",
+                "timezone=?,us_state=?,starting_cycle_day=?,weekend_icon_path=?,holiday_icon_path=?,no_school_icon_path=? WHERE id=?",
                 (
                     name.strip(),
                     school_year_start,
@@ -147,10 +181,13 @@ def build_onboarding_router(
                     timezone.strip(),
                     us_state.strip().upper(),
                     starting_cycle_day,
+                    weekend_icon or None,
+                    holiday_icon or None,
+                    no_school_icon or None,
                     profile["id"],
                 ),
             )
-        db.set_cycles(profile["id"], labels)
+        db.set_cycles(profile["id"], labels, [icon or None for icon in cycle_icons])
         schedule.rebuild_profile(profile["id"])
         return redirect(3, "Calendar basics saved. Add known days off or continue.")
 

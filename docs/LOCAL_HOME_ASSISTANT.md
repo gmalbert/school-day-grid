@@ -14,6 +14,14 @@ Assistant automatically resumes reading the data when the app becomes available.
 The direct Home Assistant adapter in School Day Grid is for optional calendar
 publishing and legacy migration. It is not needed for this local REST setup.
 
+If you use an ICS file instead of the REST sensors, keep in mind that a
+one-time file import is static. It will not change when the source calendar
+changes. For automatic updates, configure Home Assistant's Remote Calendar
+integration with the live School Day Grid ICS URL; Home Assistant polls that
+URL (every 24 hours by default), so you do not need to push each change
+manually. Use a custom polling automation if the default refresh interval is
+too slow.
+
 ## 1. Run School Day Grid with Docker
 
 Install Docker Desktop, then open PowerShell in the School Day Grid folder:

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Home Assistant setup · School Day Grid</title>
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:860px;margin:auto;padding:24px;background:#f6f7fb;color:#182234;line-height:1.55}.card{background:#fff;border:1px solid #e3e8f0;border-radius:16px;padding:22px;margin:16px 0;box-shadow:0 4px 18px #0001}h1,h2{color:#0b1f5d;line-height:1.2}a{color:#284c8f}code{background:#eef2f7;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}pre{background:#172033;color:#f5f7fb;padding:14px;border-radius:8px;overflow:auto}pre code{background:transparent;padding:0}.note{border-left:4px solid #1675e5;padding-left:12px}.small{color:#667085}
+  </style>
+</head>
+<body>
+  <p><a href="/">← Back to calendar</a></p>
+  <h1>Connect School Day Grid to Home Assistant</h1>
+  <p>School Day Grid remains the source of truth. Home Assistant can read today’s school-day data, subscribe to the calendar, or—when configured—receive a copied calendar. Choose the smallest connection that meets your need.</p>
+
+  <section class="card">
+    <h2>Recommended: REST sensors</h2>
+    <p>This is the best choice for dashboard cards, automations, and voice assistants. It requires no Home Assistant token in School Day Grid.</p>
+    <ol>
+      <li>Give the device running School Day Grid a stable LAN address.</li>
+      <li>Copy <code>home-assistant/school_day_grid.yaml</code> from this project to Home Assistant at <code>/config/packages/school_day_grid.yaml</code>.</li>
+      <li>Replace each <code>192.168.1.42</code> in that file with the School Day Grid host’s fixed IP address or local DNS name.</li>
+      <li>If packages are not enabled, add <code>homeassistant: packages: !include_dir_named packages</code> to Home Assistant’s <code>configuration.yaml</code>.</li>
+      <li>Check configuration and restart Home Assistant.</li>
+    </ol>
+    <p>The package creates <code>sensor.school_day_grid_today</code>, <code>sensor.school_day_grid_tomorrow</code>, and <code>sensor.school_day_grid_next_school_day</code>. It refreshes them every five minutes and just after midnight.</p>
+    <p class="note"><strong>Network:</strong> Home Assistant must be able to reach <code>http://YOUR-SCHOOL-DAY-GRID-HOST:8088/api/v1/health</code>. Keep port 8088 on your LAN; do not expose it directly to the public internet.</p>
+  </section>
+
+  <section class="card">
+    <h2>Calendar subscription</h2>
+    <p>For a read-only copy of the full schedule, use the private <strong>Calendar app subscription</strong> link in Sharing &amp; subscriptions. Add that URL to a Home Assistant calendar integration or another calendar service that Home Assistant already reads. Treat the URL as a password: anyone with it can read the calendar. Replace the subscription link if it is exposed.</p>
+  </section>
+
+  <section class="card">
+    <h2>MQTT Discovery</h2>
+    <p>Use this only when you already operate an MQTT broker that Home Assistant can use. Add these values to School Day Grid’s <code>.env</code> file, then restart the app:</p>
+    <pre><code>SDG_MQTT_HOST=192.168.1.10
+SDG_MQTT_PORT=1883
+SDG_MQTT_USERNAME=your_username
+SDG_MQTT_PASSWORD=your_password
+SDG_MQTT_DISCOVERY_PREFIX=homeassistant
+SDG_MQTT_BASE_TOPIC=school_day_grid</code></pre>
+    <p>School Day Grid publishes Discovery definitions for Today, Tomorrow, and Next School Day after schedule changes. REST sensors are preferable when the displayed value must update automatically at midnight.</p>
+  </section>
+
+  <section class="card">
+    <h2>Direct Home Assistant adapter</h2>
+    <p>This optional compatibility adapter lets School Day Grid authenticate to Home Assistant’s API for legacy migration and calendar publishing. Create a <strong>long-lived access token</strong> in Home Assistant’s user profile, then put the URL and token in School Day Grid’s <code>.env</code> file:</p>
+    <pre><code>SDG_HA_URL=http://homeassistant.local:8123
+SDG_HA_TOKEN=paste_a_long_lived_access_token_here
+SDG_VERIFY_SSL=true</code></pre>
+    <p>Restart School Day Grid after editing the file. The Home Assistant card on the calendar page will change from “Not connected” to show the configured address.</p>
+    <p class="note"><strong>Security:</strong> never commit the token, send it in a calendar link, or store it in a shared document. Keep <code>SDG_VERIFY_SSL=true</code>; set it to <code>false</code> only for a trusted self-signed certificate on your private network.</p>
+  </section>
+
+  <section class="card">
+    <h2>Troubleshooting</h2>
+    <ul>
+      <li>Open <code>/api/v1/health</code> from Home Assistant’s network first. If it cannot load, solve the host address, port, firewall, or sleep issue before changing YAML.</li>
+      <li>If REST sensors are unavailable after a restart, check Home Assistant’s configuration error log and verify the package path and indentation.</li>
+      <li>If the direct adapter will not authenticate, confirm the URL includes <code>http://</code> or <code>https://</code>, create a new long-lived token, and restart School Day Grid.</li>
+    </ul>
+    <p class="small">Authoritative reference files: <code>docs/LOCAL_HOME_ASSISTANT.md</code>, <code>docs/HOME_ASSISTANT_OPTIONAL_INTEGRATION.md</code>, and <code>home-assistant/school_day_grid.yaml</code>.</p>
+  </section>
+</body>
+</html>
