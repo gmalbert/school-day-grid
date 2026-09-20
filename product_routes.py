@@ -179,7 +179,9 @@ def build_product_router(db:Database,schedule:ScheduleService,templates:Jinja2Te
         if next_school: next_school["display_day"]=short_date(next_school["day"])
         rows=schedule.rows(profile=p["id"]); calendar_view=schedule_view_data(rows,view,focus); warnings=schedule.validate(p["id"])
         runtime = get_settings()
-        return templates.TemplateResponse(request,"profile.html",{"profile":p,"cycles":db.cycles(p["id"]),"today_row":today_row,"next_school":next_school,"rows":rows,"calendar_weeks":calendar_view["weeks"],"weekday_names":calendar_view["headers"],"calendar_view":calendar_view,"warnings":warnings,"audit":db.audit_rows(p["id"],20),"sources":extra.sources(p["id"]),"message":message,"ha_enabled":runtime.ha_enabled,"ha_url":runtime.ha_base_url})
+        share_url = str(request.url_for("shared", token=p["public_share_token"]))
+        ics_url = str(request.url_for("private_ics", slug=p["slug"])) + "?token=" + quote(p["ics_token"], safe="")
+        return templates.TemplateResponse(request,"profile.html",{"profile":p,"cycles":db.cycles(p["id"]),"today_row":today_row,"next_school":next_school,"rows":rows,"calendar_weeks":calendar_view["weeks"],"weekday_names":calendar_view["headers"],"calendar_view":calendar_view,"warnings":warnings,"audit":db.audit_rows(p["id"],20),"sources":extra.sources(p["id"]),"message":message,"ha_enabled":runtime.ha_enabled,"ha_url":runtime.ha_base_url,"share_url":share_url,"ics_url":ics_url})
 
     @router.get("/help", response_class=HTMLResponse)
     async def help_page(request: Request):
